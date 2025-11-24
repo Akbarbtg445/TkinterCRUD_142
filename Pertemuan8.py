@@ -3,11 +3,9 @@ from tkinter import ttk
 import tkinter.messagebox as msg
 import sqlite3
 
-# Membuat koneksi ke database sqllite dengan nama nilai_siswa.db
 def koneksi():
     return sqlite3.connect("nilai_siswa.db")
 
-# Membuat tabel ke nilai_siswa.db
 def create_table():
     con = koneksi()
     cur = con.cursor()
@@ -24,7 +22,6 @@ def create_table():
     con.commit()
     con.close()
 
-# Membuat fungsi menentukan nilai tertinggi
 def prediksi_fakultas(bio, fis, eng):
     if bio > fis and bio > eng:
         return "Kedokteran"
@@ -35,7 +32,6 @@ def prediksi_fakultas(bio, fis, eng):
     else:
         return "Tidak Diketahui"
 
-# Menyimpan data siswa dan hasil prediksi ke database
 def insert_data(nama, bio, fis, eng, prediksi):
     con = koneksi()
     cur = con.cursor()
@@ -44,7 +40,6 @@ def insert_data(nama, bio, fis, eng, prediksi):
     con.commit()
     con.close()
 
-# Ambil semua data dari database untuk di tampilkan di database
 def read_data():
     con = koneksi()
     cur = con.cursor()
@@ -53,7 +48,24 @@ def read_data():
     con.close()
     return rows
 
-# Membuat jendela utama dengan ukuran 700x500
+def update_data(nama, bio, fis, eng, prediksi):
+        con = koneksi()
+        cur = con.cursor()
+        cur.execute("""
+        UPDATE nilai_siswa 
+        SET biologi=?, fisika=?, inggris=?, prediksi_fakultas=? 
+        WHERE nama_siswa=?
+        """, (bio, fis, eng, prediksi, nama))
+        con.commit()
+        con.close()
+
+def delete_data(nama):
+     con = koneksi()
+     cur = con.cursor()
+     cur.execute("DELETE FROM nilai_siswa WHERE nama_siswa=?", (nama,))
+     con.commit()
+     con.close()
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -64,7 +76,7 @@ class App(tk.Tk):
         frame = tk.Frame(self, bg="#ffffff", padx=10, pady=10)
         frame.pack(padx=10, pady=10, fill="x")
 
-        # Entry input untuk mengisi nama siswa,nilai biologi,nilai fisika,nilaiinggris 
+        
         tk.Label(frame, text="Nama Siswa:", bg="#ffffff").grid(row=0, column=0, sticky="w")
         self.ent_nama = tk.Entry(frame, width=30)
         self.ent_nama.grid(row=0, column=1, padx=5, pady=5)
@@ -87,8 +99,10 @@ class App(tk.Tk):
 
         tk.Button(btn_frame, text="Submit", command=self.submit_data, width=12).pack(side="left", padx=5)
         tk.Button(btn_frame, text="Clear", command=self.clear_inputs, width=12).pack(side="left", padx=5)
-
-        # Tabel Treeview
+        tk.Button(btn_frame, text="Refresh", command=self.refresh_table, width=12).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="Update", command=self.update_data, width=12).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="Delete", command=self.delete_data, width=12).pack(side="left", padx=5)
+   
         columns = ("Nama Siswa", "Biologi", "Fisika", "Inggris", "Prediksi Fakultas")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         for col in columns:
@@ -105,9 +119,9 @@ class App(tk.Tk):
             fis = int(self.ent_fis.get())
             eng = int(self.ent_eng.get())
         except ValueError:
-            messagebox.showerror("Input Error", "Semua nilai harus berupa angka.")
+            msg.showerror("Input Error", "Semua nilai harus berupa angka.")
             return
-
+        
         prediksi = prediksi_fakultas(bio, fis, eng)
         insert_data(nama, bio, fis, eng, prediksi)
         self.refresh_table()
@@ -125,8 +139,35 @@ class App(tk.Tk):
         for data in read_data():
             self.tree.insert("", "end", values=data)
 
-# Jalankan aplikasi
+    def update_data(self):
+        nama = self.ent_nama.get()
+        try:
+            bio = int(self.ent_bio.get())
+            fis = int(self.ent_fis.get())
+            eng = int(self.ent_eng.get())
+        except ValueError:
+            msg.showerror("Input Error", "Semua nilai harus berupa angka.")
+            return
+
+        prediksi = prediksi_fakultas(bio, fis, eng)
+        update_data(nama, bio, fis, eng, prediksi)
+        self.refresh_table()
+        self.clear_inputs()
+        msg.showinfo("Update", f"Data {nama} berhasil diperbarui.")
+
+    def delete_data(self):
+        nama = self.ent_nama.get()
+        if not nama:
+            msg.showerror("Delete Error", "Masukkan nama siswa yang ingin dihapus.")
+            return
+
+        delete_data(nama)
+        self.refresh_table()
+        self.clear_inputs()
+        msg.showinfo("Delete", f"Data {nama} berhasil dihapus.")
+
 if __name__ == "__main__":
     create_table()
     app = App()
     app.mainloop()    
+
